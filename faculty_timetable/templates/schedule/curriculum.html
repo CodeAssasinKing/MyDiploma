@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}Okuw Plany{% endblock %}
+{% block page_title %}📚 Okuw Plany{% endblock %}
+{% block header_actions %}
+<a href="{% url 'generator' %}" class="btn btn-primary btn-sm">🤖 Generator</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Add form -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <div class="card-title">➕ Täze Okuw Plany Goş</div>
+  </div>
+  <div class="card-body">
+    <form method="post" action="{% url 'curriculum_add' %}?next={{ request.get_full_path }}" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:end;">
+      {% csrf_token %}
+
+      <div>
+        <label class="form-label required">Topar</label>
+        <select name="group" class="form-select" required>
+          <option value="">— Topar —</option>
+          {% for g in groups %}
+          <option value="{{ g.id }}" {% if selected_group_id == g.id|stringformat:"s" %}selected{% endif %}>
+            {{ g.name }} ({{ g.course }}-kurs)
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label required">Ders</label>
+        <select name="subject" class="form-select" required>
+          <option value="">— Ders —</option>
+          {% for s in subjects %}
+          <option value="{{ s.id }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label required">Görnüş</label>
+        <select name="lesson_type" class="form-select" required>
+          {% for val, label in lesson_types %}
+          <option value="{{ val }}">{% if val == 'LAB' %}🔬{% elif val == 'LEC' %}📢{% else %}📖{% endif %} {{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">Hepde jübütleri</label>
+        <select name="hours_per_week" class="form-select">
+          <option value="1">1 jübüt (Her hepde)</option>
+          <option value="2">2 jübüt (Täk + Jübüt Lab)</option>
+          <option value="3">3 jübüt</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">Saýlanyan mugallym</label>
+        <select name="preferred_teacher" class="form-select">
+          <option value="">— Islendik —</option>
+          {% for t in teachers %}
+          <option value="{{ t.id }}">{{ t.full_name }}{% if t.can_teach_english %} 🇬🇧{% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <button type="submit" class="btn btn-primary" style="width:100%;padding:9px;">✅ Goş</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Filter + list -->
+<div class="card">
+  <div class="card-header" style="flex-wrap:wrap;gap:10px;">
+    <div class="card-title">📋 Okuw Plany Sanawy <span class="badge badge-primary">{{ total }}</span></div>
+    <form method="get" style="display:flex;align-items:center;gap:8px;">
+      <label class="filter-label">Topar süzgüç:</label>
+      <select name="group" class="filter-select" onchange="this.form.submit()">
+        <option value="">— Hemmesi —</option>
+        {% for g in groups %}
+        <option value="{{ g.id }}" {% if selected_group_id == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+        {% endfor %}
+      </select>
+      {% if selected_group_id %}<a href="{% url 'curriculum' %}" class="btn btn-secondary btn-sm">✕ Arassala</a>{% endif %}
+    </form>
+  </div>
+
+  {% if curricula %}
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr>
+          <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;">Topar</th>
+          <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;">Ders</th>
+          <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;">Görnüş</th>
+          <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;">Jübüt/Hepde</th>
+          <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;">Saýlanyan Mugallym</th>
+          <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:center;" class="no-print">Işler</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cur in curricula %}
+        <tr style="border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background=''">
+          <td style="padding:9px 12px;">
+            <a href="{% url 'group_timetable' cur.group.id %}" style="color:var(--primary);text-decoration:none;font-weight:700;">
+              {{ cur.group.name }}
+            </a>
+            <span class="badge {% if cur.group.group_type == 'EN' %}badge-warning{% else %}badge-success{% endif %}" style="font-size:9px;margin-left:4px;">
+              {{ cur.group.get_group_type_display }}
+            </span>
+          </td>
+          <td style="padding:9px 12px;font-weight:600;">{{ cur.subject.name }}</td>
+          <td style="padding:9px 12px;">
+            <span class="type-tag {% if cur.lesson_type == 'LAB' %}lab{% elif cur.lesson_type == 'LEC' %}lec{% else %}sim{% endif %}">
+              {% if cur.lesson_type == 'LAB' %}🔬{% elif cur.lesson_type == 'LEC' %}📢{% else %}📖{% endif %}
+              {{ cur.get_lesson_type_display }}
+            </span>
+          </td>
+          <td style="padding:9px 12px;text-align:center;">
+            <span class="badge badge-primary">{{ cur.hours_per_week }}×</span>
+          </td>
+          <td style="padding:9px 12px;color:var(--text-muted);">
+            {% if cur.preferred_teacher %}
+              {{ cur.preferred_teacher.full_name }}
+              {% if cur.preferred_teacher.can_teach_english %}<span class="lang-tag lang-en" style="margin-left:3px;">EN</span>{% endif %}
+            {% else %}
+              <span style="font-style:italic;">Islendik</span>
+            {% endif %}
+          </td>
+          <td style="padding:9px 12px;text-align:center;" class="no-print">
+            <form method="post" action="{% url 'curriculum_delete' cur.pk %}?next={{ request.get_full_path }}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="tbl-action-btn del"
+                onclick="return confirm('{{ cur }} — Pozmak isleýärsiňizmi?')"
+                style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid var(--border);background:#fff;color:var(--text);cursor:pointer;">
+                🗑️ Poz
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:48px;color:var(--text-muted);">
+    <div style="font-size:48px;margin-bottom:12px;">📭</div>
+    <h3>Okuw plany boş</h3>
+    <p>Ýokardaky forma arkaly ders goşuň.</p>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.form-label { display:block; font-size:12px; font-weight:700; margin-bottom:5px; }
+.form-label.required::after { content:' *'; color:var(--danger); }
+.form-select { width:100%; padding:8px 10px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:13px; background:#fff; cursor:pointer; }
+.form-select:focus { outline:none; border-color:var(--primary); }
+.tbl-action-btn { cursor:pointer; }
+.tbl-action-btn.del:hover { background:#fee2e2!important; border-color:var(--danger)!important; }
+</style>
+{% endblock %}

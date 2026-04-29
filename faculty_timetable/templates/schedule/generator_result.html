@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}Generator Netijesi{% endblock %}
+{% block page_title %}🤖 Generator Netijesi{% endblock %}
+{% block header_actions %}
+<a href="{% url 'generator' %}" class="btn btn-secondary btn-sm">← Generatora Gait</a>
+<a href="{% url 'timetable' %}" class="btn btn-primary btn-sm">📋 Sapaklyk Gör</a>
+{% endblock %}
+
+{% block content %}
+
+{% if success %}
+
+<!-- Success banner -->
+<div style="display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#d1fae5,#ecfdf5);border:1.5px solid #6ee7b7;border-radius:var(--radius);padding:20px 24px;margin-bottom:24px;">
+  <div style="font-size:48px;">✅</div>
+  <div>
+    <h2 style="margin:0;font-size:20px;font-weight:800;color:#065f46;">Sapaklyk üstünlikli döredildi!</h2>
+    <p style="margin:6px 0 0;color:#047857;font-size:14px;">
+      <strong>{{ created_count }}</strong> sapak döredildi.
+      Jemi maglumat bazasynda <strong>{{ lesson_count }}</strong> sapak bar.
+    </p>
+  </div>
+</div>
+
+<!-- Summary cards -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="stat-icon green">✅</div>
+    <div><div class="stat-value" style="color:#065f46;">{{ created_count }}</div><div class="stat-label">Döredilen sapak</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon orange">⚠️</div>
+    <div><div class="stat-value" style="color:var(--odd-color);">{{ skipped|length }}</div><div class="stat-label">Geçirilen ýazgy</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon blue">📋</div>
+    <div><div class="stat-value">{{ lesson_count }}</div><div class="stat-label">Jemi sapak</div></div>
+  </div>
+</div>
+
+<!-- Warnings -->
+{% if warnings %}
+<div class="card" style="margin-bottom:20px;border-color:#fed7aa;">
+  <div class="card-header" style="background:#fff7ed;">
+    <div class="card-title" style="color:var(--odd-color);">⚠️ Duýduryşlar ({{ warnings|length }})</div>
+  </div>
+  <div class="card-body" style="padding:12px;">
+    {% for w in warnings %}
+    <div style="padding:6px 10px;border-left:3px solid #f59e0b;background:#fffbeb;border-radius:4px;margin-bottom:4px;font-size:13px;">
+      {{ w }}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Skipped items -->
+{% if skipped %}
+<div class="card" style="margin-bottom:20px;border-color:#fca5a5;">
+  <div class="card-header" style="background:#fef2f2;">
+    <div class="card-title" style="color:var(--danger);">❌ Geçirilenlər ({{ skipped|length }})</div>
+  </div>
+  <div class="card-body" style="padding:12px;">
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+      Aşakdaky sapaklara slot ýa-da elýeterli mugallym/otag tapylmady. Olary el bilen goşup bilersiňiz.
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr>
+          <th style="background:#fef2f2;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Okuw Plany Ýazgysy</th>
+          <th style="background:#fef2f2;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Sebäp</th>
+          <th style="background:#fef2f2;padding:8px 12px;border-bottom:1px solid var(--border);" class="no-print">Işlem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item, reason in skipped %}
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-weight:600;">{{ item }}</td>
+          <td style="padding:8px 12px;color:var(--danger);">{{ reason }}</td>
+          <td style="padding:8px 12px;" class="no-print">
+            <a href="{% url 'lesson_create' %}?next={% url 'generator' %}" class="tbl-action-btn edit" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;text-decoration:none;border:1px solid var(--primary);background:var(--primary-light);color:var(--primary);">
+              ➕ El bilen goş
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Affected groups -->
+<div class="card" style="margin-bottom:24px;">
+  <div class="card-header">
+    <div class="card-title">👥 Täzelenen Toparlar</div>
+  </div>
+  <div class="card-body" style="padding:12px;">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;">
+      {% for g in groups %}
+      <a href="{% url 'group_timetable' g.id %}" style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:var(--primary-light);border:1px solid var(--primary);border-radius:8px;text-decoration:none;color:var(--primary);font-weight:700;font-size:13px;transition:background 0.2s;" onmouseover="this.style.background='#bfdbfe'" onmouseout="this.style.background='var(--primary-light)'">
+        👥 {{ g.name }}
+        <span style="font-size:11px;opacity:0.7;">Sapaklyk gör →</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Action buttons -->
+<div style="display:flex;flex-wrap:wrap;gap:12px;padding:8px 0 24px;">
+  <a href="{% url 'timetable' %}" class="btn btn-primary btn-lg">📋 Doly Sapaklyk Gör</a>
+  <a href="{% url 'lesson_list' %}" class="btn btn-secondary btn-lg">📋 Sapak Sanawy</a>
+  <a href="{% url 'generator' %}" class="btn btn-secondary btn-lg">🔄 Täzeden Işlet</a>
+  <button id="btn-print" class="btn btn-secondary btn-lg no-print">🖨️ Çap et</button>
+</div>
+
+{% else %}
+
+<!-- Error state -->
+<div style="display:flex;align-items:flex-start;gap:16px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:var(--radius);padding:20px 24px;margin-bottom:24px;">
+  <div style="font-size:40px;">❌</div>
+  <div>
+    <h2 style="margin:0;font-size:18px;font-weight:800;color:var(--danger);">Generator ýalňyşlyk berdi</h2>
+    <p style="margin:8px 0 0;font-size:14px;color:#991b1b;">{{ error }}</p>
+  </div>
+</div>
+<div style="display:flex;gap:12px;">
+  <a href="{% url 'generator' %}" class="btn btn-primary btn-lg">← Generatora Gait</a>
+  <a href="{% url 'curriculum' %}" class="btn btn-secondary btn-lg">📚 Okuw Planyny Doldur</a>
+</div>
+
+{% endif %}
+
+<style>
+.tbl-action-btn { text-decoration:none; }
+</style>
+{% endblock %}

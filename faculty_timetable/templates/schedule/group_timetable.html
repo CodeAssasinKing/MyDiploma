@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block title %}{{ group.name }} — Sapaklyk{% endblock %}
+{% block page_title %}👥 {{ group.name }} Topar{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'lesson_create' %}?group={{ group.id }}&next={{ request.get_full_path }}" class="btn btn-primary btn-sm no-print">➕ Sapak Goş</a>
+<button id="btn-print" class="btn btn-secondary btn-sm no-print">🖨️ Çap et</button>
+{% endblock %}
+
+{% block content %}
+
+<div class="filter-bar no-print" style="justify-content:space-between;">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div class="filter-group">
+      <span class="filter-label">Topar:</span>
+      <select class="filter-select" onchange="window.location='/toparlar/'+this.value+'/?week_type={{ week_type }}'">
+        {% for g in groups %}
+        <option value="{{ g.id }}" {% if g.id == group.id %}selected{% endif %}>{{ g.name }} ({{ g.course }}-kurs)</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Hepde:</span>
+      <div class="week-toggle">
+        <a href="?week_type=ODD" class="week-btn {% if week_type == 'ODD' %}active-odd{% endif %}">🔴 Täk</a>
+        <a href="?week_type=EVEN" class="week-btn {% if week_type == 'EVEN' %}active-even{% endif %}">🔵 Jübüt</a>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <span class="badge {% if group.group_type == 'EN' %}badge-warning{% else %}badge-success{% endif %}">{{ group.get_group_type_display }}</span>
+    <span class="badge badge-primary">{{ group.course }}-nji kurs</span>
+    <span class="badge badge-primary">{{ group.student_count }} talyp</span>
+  </div>
+</div>
+
+<div class="week-indicator {% if week_type == 'ODD' %}odd{% else %}even{% endif %} no-print">
+  {% if week_type == 'ODD' %}🔴 Täk hepde{% else %}🔵 Jübüt hepde{% endif %}
+</div>
+<div class="legend no-print">
+  <div class="legend-item"><div class="legend-dot lab"></div> Laboratoriýa (2 kiçi topar)</div>
+  <div class="legend-item"><div class="legend-dot lec"></div> Leksiýa</div>
+  <div class="legend-item"><div class="legend-dot sim"></div> Adaty sapak</div>
+</div>
+
+<div class="timetable-wrapper">
+  <table class="timetable-table">
+    <thead>
+      <tr>
+        <th style="min-width:100px;">Wagt</th>
+        <th>Sapak</th>
+        <th>Mugallym</th>
+        <th>Otag</th>
+        <th>Görnüş</th>
+        <th>Kiçi topar</th>
+        <th>Hepde</th>
+        <th class="no-print" style="width:70px;">Işler</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for day_data in timetable_rows %}
+      <tr data-day="{{ day_data.day_code }}">
+        <th colspan="8" class="day-row" style="background:linear-gradient(90deg,#1e3a8a,#1a56a0);color:#fff;padding:8px 14px;font-size:13px;font-weight:700;text-align:left;">
+          📅 {{ day_data.day_name }}
+        </th>
+      </tr>
+      {% for row in day_data.rows %}
+      {% if row.lessons %}
+        {% for lesson in row.lessons %}
+        <tr class="lesson-row">
+          {% if forloop.first %}
+          <td class="time-cell" rowspan="{{ row.lessons|length }}">
+            <span class="slot-num">{{ row.timeslot.number }}-nji</span>
+            <span class="slot-time">{{ row.timeslot.start_time|time:"H:i" }}–{{ row.timeslot.end_time|time:"H:i" }}</span>
+            <span class="slot-shift">{{ row.timeslot.shift }}-nji çalşyk</span>
+          </td>
+          {% endif %}
+          <td style="font-weight:600;font-size:13px;padding:8px 10px;">
+            <span style="display:flex;align-items:center;gap:6px;">
+              {% if lesson.lesson_type == 'LAB' %}🔬{% elif lesson.lesson_type == 'LEC' %}📢{% else %}📖{% endif %}
+              {{ lesson.subject.name }}
+            </span>
+          </td>
+          <td style="padding:8px 10px;font-size:13px;">{{ lesson.teacher }}</td>
+          <td style="padding:8px 10px;font-size:13px;">{{ lesson.classroom.name }}</td>
+          <td style="padding:8px 10px;">
+            <span class="type-tag {% if lesson.lesson_type == 'LAB' %}lab{% elif lesson.lesson_type == 'LEC' %}lec{% else %}sim{% endif %}">
+              {{ lesson.get_lesson_type_display }}
+            </span>
+            {% if lesson.language == 'EN' %}<span class="lang-tag lang-en" style="margin-left:3px;">EN</span>{% endif %}
+          </td>
+          <td style="padding:8px 10px;">
+            {% if lesson.subgroup == 'FULL' %}
+            <span style="color:var(--text-muted);font-size:12px;">Doly topar</span>
+            {% else %}
+            <span class="subgroup-tag">{{ lesson.get_subgroup_display }}</span>
+            {% endif %}
+          </td>
+          <td style="padding:8px 10px;">
+            {% if lesson.week_type == 'ODD' %}
+            <span class="week-tag tag-odd" style="position:static;display:inline-block;">Täk</span>
+            {% elif lesson.week_type == 'EVEN' %}
+            <span class="week-tag tag-even" style="position:static;display:inline-block;">Jübüt</span>
+            {% else %}
+            <span class="week-tag tag-both" style="position:static;display:inline-block;">Her</span>
+            {% endif %}
+          </td>
+          <td style="padding:6px 8px;white-space:nowrap;" class="no-print">
+            <a href="{% url 'lesson_edit' lesson.id %}?next={{ request.get_full_path }}" class="tbl-action-btn edit" title="Düzet">✏️ Düzet</a>
+            <a href="{% url 'lesson_delete' lesson.id %}?next={{ request.get_full_path }}" class="tbl-action-btn del" title="Poz">🗑️</a>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td class="time-cell">
+            <span class="slot-num">{{ row.timeslot.number }}-nji</span>
+            <span class="slot-time">{{ row.timeslot.start_time|time:"H:i" }}–{{ row.timeslot.end_time|time:"H:i" }}</span>
+          </td>
+          <td colspan="7" style="padding:6px 10px;color:var(--text-muted);font-size:12px;">
+            <a href="{% url 'lesson_create' %}?group={{ group.id }}&day={{ day_data.day_code }}&slot={{ row.timeslot.id }}&next={{ request.get_full_path }}"
+               class="quick-add-btn no-print">➕ Sapak goş</a>
+          </td>
+        </tr>
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+.tbl-action-btn {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 3px 8px; border-radius: 5px; font-size: 11px;
+  font-weight: 600; text-decoration: none; border: 1px solid var(--border);
+  background: #fff; color: var(--text); transition: all 0.15s; margin: 1px;
+}
+.tbl-action-btn.edit:hover { background: #dbeafe; border-color: var(--primary); }
+.tbl-action-btn.del:hover  { background: #fee2e2; border-color: var(--danger); }
+.quick-add-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 5px; font-size: 11px;
+  font-weight: 600; text-decoration: none;
+  color: var(--primary); border: 1px dashed var(--primary);
+  background: var(--primary-light); opacity: 0;
+  transition: opacity 0.2s;
+}
+tr:hover .quick-add-btn { opacity: 1; }
+</style>
+{% endblock %}

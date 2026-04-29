@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% block title %}Awtomatik Sapaklyk Döretmek{% endblock %}
+{% block page_title %}🤖 Awtomatik Sapaklyk Generatory{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'curriculum' %}" class="btn btn-secondary btn-sm">📚 Okuw Plany</a>
+<a href="{% url 'timetable' %}" class="btn btn-secondary btn-sm">📋 Sapaklyk</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<div class="gen-hero">
+  <div class="gen-hero-icon">🤖</div>
+  <div>
+    <h2 style="margin:0;font-size:20px;font-weight:800;color:var(--primary);">Awtomatik sapaklaryň tertibini düzýän generator</h2>
+    <p style="margin:4px 0 0;color:var(--text-muted);font-size:14px;">
+      Topar, mugallym, otag we wagt maglumatlaryna esaslanyp gapma-garşylyk bolmazdan sapaklaryň tertibini döredýär.
+    </p>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="gen-stats">
+  <div class="gen-stat">
+    <div class="gen-stat-val">{{ stats.groups }}</div>
+    <div class="gen-stat-lbl">👥 Topar</div>
+  </div>
+  <div class="gen-stat">
+    <div class="gen-stat-val">{{ stats.curriculum }}</div>
+    <div class="gen-stat-lbl">📚 Okuw Plany</div>
+  </div>
+  <div class="gen-stat">
+    <div class="gen-stat-val">{{ stats.teachers }}</div>
+    <div class="gen-stat-lbl">👨‍🏫 Mugallym</div>
+  </div>
+  <div class="gen-stat">
+    <div class="gen-stat-val">{{ stats.classrooms.LAB }}/{{ stats.classrooms.LEC }}/{{ stats.classrooms.SIM }}</div>
+    <div class="gen-stat-lbl">🏛️ Tej/Lek/Adaty</div>
+  </div>
+  <div class="gen-stat">
+    <div class="gen-stat-val">{{ stats.slots }}</div>
+    <div class="gen-stat-lbl">⏰ Wagt Jübüdi</div>
+  </div>
+  <div class="gen-stat {% if lesson_count > 0 %}gen-stat-warn{% endif %}">
+    <div class="gen-stat-val">{{ lesson_count }}</div>
+    <div class="gen-stat-lbl">📋 Häzirki Sapaklar</div>
+  </div>
+</div>
+
+{% if stats.curriculum == 0 %}
+<div class="gen-alert gen-alert-warn">
+  ⚠️ <strong>Okuw plany boş!</strong> Generatory işletmezden öň okuw planyny dolduryň.
+  <a href="{% url 'curriculum' %}" class="btn btn-primary btn-sm" style="margin-left:12px;">📚 Okuw Planyny Doldur</a>
+</div>
+{% endif %}
+
+<div class="gen-layout">
+
+  <!-- LEFT: Config form -->
+  <div class="gen-form-col">
+    <form method="post" action="{% url 'generator_run' %}" id="genForm">
+      {% csrf_token %}
+
+      <!-- STEP 1: Groups -->
+      <div class="gen-card">
+        <div class="gen-card-header">
+          <span class="step-num">1</span> Toparlar saýlaň
+        </div>
+        <div class="gen-card-body">
+          <div class="step-ctrl-row">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAll(true)">✅ Hemmesini saýla</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAll(false)">☐ Aýyr</button>
+          </div>
+          <div class="group-grid">
+            {% for group in groups %}
+            <label class="group-check-card">
+              <input type="checkbox" name="group_ids" value="{{ group.id }}" checked>
+              <div class="group-check-body">
+                <div class="group-check-name">{{ group.name }}</div>
+                <div class="group-check-meta">
+                  {{ group.course }}-kurs ·
+                  <span class="badge {% if group.group_type == 'EN' %}badge-warning{% else %}badge-success{% endif %}" style="font-size:9px;padding:1px 5px;">
+                    {{ group.get_group_type_display }}
+                  </span>
+                </div>
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Days -->
+      <div class="gen-card">
+        <div class="gen-card-header">
+          <span class="step-num">2</span> Günleri saýlaň
+        </div>
+        <div class="gen-card-body">
+          <div class="days-grid">
+            {% for code, name in days_list %}
+            <label class="day-check {% if code == 'SUN' %}day-sun{% endif %}">
+              <input type="checkbox" name="preferred_days" value="{{ code }}" {% if code != 'SUN' %}checked{% endif %}>
+              <span>{{ name }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: Options -->
+      <div class="gen-card">
+        <div class="gen-card-header">
+          <span class="step-num">3</span> Sazlamalar
+        </div>
+        <div class="gen-card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+            <div>
+              <label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px;">
+                Günde iň köp sapak (topar başyna)
+              </label>
+              <div style="display:flex;gap:6px;">
+                {% for n in daily_opts %}
+                <label class="num-btn">
+                  <input type="radio" name="max_daily" value="{{ n }}" {% if n == 4 %}checked{% endif %}>
+                  <span>{{ n }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+
+           
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <div style="display:flex;gap:12px;align-items:center;padding-bottom:24px;">
+        <button type="submit" id="runBtn" class="btn btn-primary btn-lg"
+          {% if stats.curriculum == 0 %}disabled title="Ilki okuw planyny dolduryň"{% endif %}>
+          🚀 Sapaklyk Döret
+        </button>
+        <a href="{% url 'timetable' %}" class="btn btn-secondary btn-lg">Yzyna</a>
+        {% if stats.curriculum == 0 %}
+        <span style="font-size:12px;color:var(--danger);">⚠️ Okuw plany boş</span>
+        {% endif %}
+      </div>
+
+    </form>
+     <form action="{% url 'delete_all_lessons' %}" method="post">
+        <label style="display:block;font-size:13px;font-weight:700;margin-bottom:8px;">
+                Häzirki sapaklar ({{ lesson_count }} sany)
+              </label>
+              <label class="toggle-card {% if lesson_count > 0 %}toggle-warn{% endif %}">
+                <input type="checkbox" name="clear_existing">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:20px;">🗑️</span>
+                  <div>
+                    {% csrf_token %}
+                    <button style="font-weight:700;font-size:13px; border:none; background-color: transparent;" type="submit">Öňküleri poz</button>
+                    <div style="font-size:11px;color:var(--text-muted);">Saýlanan toparlar üçin pozular</div>
+                  </div>
+                </div>
+              </label>
+            </form>
+  </div>
+
+  <!-- RIGHT: Side panel -->
+  <div class="gen-side-col">
+
+    <!-- Curriculum preview -->
+    <div class="gen-card">
+      <div class="gen-card-header" style="justify-content:space-between;">
+        <span><span class="step-num" style="background:#059669;">📚</span> Okuw Plany</span>
+        <a href="{% url 'curriculum' %}" class="btn btn-secondary btn-sm">Düzet →</a>
+      </div>
+      <div style="max-height:500px;overflow-y:auto;">
+        {% for group, cur_items in group_curriculum_list %}
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);">
+          <div style="font-weight:700;font-size:12px;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+            {{ group.name }}
+            <span class="badge {% if group.group_type == 'EN' %}badge-warning{% else %}badge-success{% endif %}" style="font-size:9px;">{{ group.get_group_type_display }}</span>
+          </div>
+          {% if cur_items %}
+            {% for item in cur_items %}
+            <div class="cur-item cur-{{ item.lesson_type|lower }}">
+              <span>{% if item.lesson_type == 'LAB' %}🔬{% elif item.lesson_type == 'LEC' %}📢{% else %}📖{% endif %}</span>
+              <span style="flex:1;font-weight:600;">{{ item.subject.name }}</span>
+              <span style="font-weight:800;color:var(--primary);">×{{ item.hours_per_week }}</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div style="font-size:11px;color:var(--danger);padding:4px 0;">⚠️ Okuw plany ýok</div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div style="padding:24px;text-align:center;color:var(--text-muted);">Topar ýok</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Algorithm info -->
+    <div class="gen-card" style="margin-top:16px;">
+      <div class="gen-card-header">
+        <span class="step-num" style="background:#6d28d9;">ℹ️</span> Algoritm
+      </div>
+      <div style="padding:14px 16px;font-size:12px;line-height:1.9;color:var(--text-muted);">
+        <p>🔬 <strong>Lab:</strong> SUB1=Täk hepde + SUB2=Jübüt hepde awtomatik</p>
+        <p>📢 <strong>Leksiýa/Adaty:</strong> Her hepde (BOTH), doly topar</p>
+        <p>🇬🇧 <strong>Iňlis topar:</strong> Iňlisçe mugallymlar saýlanýar</p>
+        <p>⚡ <strong>Gapma-garşylyk:</strong> Mugallym, otag, topar barlanyp geçilýär</p>
+        <p>⚖️ <strong>Deňagramly ýük:</strong> Mugallymlar arasyna deň paýlanýar</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+/* ── Generator page styles ── */
+.gen-hero{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,var(--primary-light),#fff);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;}
+.gen-hero-icon{font-size:42px;}
+.gen-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px;}
+@media(max-width:900px){.gen-stats{grid-template-columns:repeat(3,1fr);}}
+.gen-stat{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 10px;text-align:center;box-shadow:var(--shadow);}
+.gen-stat-val{font-size:22px;font-weight:800;color:var(--primary);}
+.gen-stat-lbl{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.gen-stat-warn{background:#fff7ed;border-color:#fed7aa;}
+.gen-stat-warn .gen-stat-val{color:var(--odd-color);}
+.gen-alert{padding:14px 18px;border-radius:var(--radius);margin-bottom:20px;display:flex;align-items:center;font-size:14px;}
+.gen-alert-warn{background:#fff7ed;border:1px solid #fed7aa;color:#92400e;}
+.gen-layout{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;}
+@media(max-width:900px){.gen-layout{grid-template-columns:1fr;}}
+.gen-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden;}
+.gen-card-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px;background:linear-gradient(135deg,#f8faff,#fff);}
+.gen-card-body{padding:16px;}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;font-size:12px;font-weight:800;flex-shrink:0;}
+.step-ctrl-row{display:flex;gap:8px;margin-bottom:12px;}
+.group-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;}
+.group-check-card{border:2px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;transition:all 0.2s;display:block;}
+.group-check-card:has(input:checked){border-color:var(--primary);background:var(--primary-light);}
+.group-check-card input{display:none;}
+.group-check-name{font-weight:700;font-size:13px;}
+.group-check-meta{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.days-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.day-check{display:flex;align-items:center;gap:6px;padding:8px 14px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;}
+.day-check input{display:none;}
+.day-check:has(input:checked){border-color:var(--primary);background:var(--primary-light);color:var(--primary);}
+.day-sun:has(input:checked){border-color:var(--odd-color);background:var(--odd-bg);color:var(--odd-color);}
+.num-btn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-weight:700;font-size:15px;transition:all 0.2s;}
+.num-btn input{display:none;}
+.num-btn:has(input:checked){border-color:var(--primary);background:var(--primary);color:#fff;}
+.toggle-card{display:block;border:2px solid var(--border);border-radius:8px;padding:10px 14px;cursor:pointer;transition:all 0.2s;}
+.toggle-card input{display:none;}
+.toggle-card:has(input:checked){border-color:var(--danger);background:#fef2f2;}
+.toggle-warn{border-color:#fca5a5;background:#fff7ed;}
+.cur-item{display:flex;align-items:center;gap:6px;padding:3px 8px;border-radius:5px;margin-bottom:3px;font-size:11px;border-left:2px solid;}
+.cur-lab{background:var(--lab-bg);border-left-color:var(--lab-color);}
+.cur-lec{background:var(--lec-bg);border-left-color:var(--lec-color);}
+.cur-sim{background:var(--sim-bg);border-left-color:var(--sim-color);}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAll(state) {
+  document.querySelectorAll('input[name="group_ids"]').forEach(cb => cb.checked = state);
+}
+document.getElementById('genForm')?.addEventListener('submit', function(e) {
+  const checked = document.querySelectorAll('input[name="group_ids"]:checked');
+  const days    = document.querySelectorAll('input[name="preferred_days"]:checked');
+  if (!checked.length) { e.preventDefault(); alert('Azyndan bir topar saýlaň!'); return; }
+  if (!days.length)    { e.preventDefault(); alert('Azyndan bir gün saýlaň!');   return; }
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Döredilýär...';
+  btn.style.opacity = '0.7';
+});
+</script>
+{% endblock %}

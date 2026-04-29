@@ -1,0 +1,110 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Sapaklyk Ulgamy{% endblock %} — Fakultet</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>" />
+</head>
+<body>
+
+<div class="overlay" id="overlay"></div>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar" id="sidebar">
+  <a href="{% url 'dashboard' %}" class="sidebar-logo">
+    <div class="sidebar-logo-icon">📅</div>
+    <div class="sidebar-logo-text">
+      Sapaklaryň tertibi
+      <span>Ulgamy</span>
+    </div>
+  </a>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-title">Esasy</div>
+    <a href="{% url 'dashboard' %}" class="sidebar-link" data-page="dashboard">
+      <span class="icon">🏠</span> Baş sahypa
+    </a>
+    <a href="{% url 'timetable' %}" class="sidebar-link" data-page="timetable">
+      <span class="icon">📋</span> Sapaklaryň tertibi
+    </a>
+
+    <div class="nav-section-title">Salgylanma</div>
+    <a href="{% url 'teacher_list' %}" class="sidebar-link" data-page="teachers">
+      <span class="icon">👨‍🏫</span> Mugallymlar
+    </a>
+    <a href="{% url 'classroom_list' %}" class="sidebar-link" data-page="classrooms">
+      <span class="icon">🏛️</span> Synp otaglary
+    </a>
+
+    <div class="nav-section-title">Ulgam</div>
+    <a href="{% url 'generator' %}" class="sidebar-link" style="background:rgba(139,92,246,0.18);margin:2px 0;border-left:3px solid #8b5cf6;">
+      <span class="icon">&#129302;</span> Generator
+    </a>
+    <a href="{% url 'curriculum' %}" class="sidebar-link">
+      <span class="icon">&#128218;</span> Okuw Plany
+    </a>
+    <a href="{% url 'lesson_create' %}" class="sidebar-link" style="background:rgba(46,204,113,0.18);margin:2px 0;border-left:3px solid #2ecc71;">
+      <span class="icon">&#10133;</span> Sapak Gos
+    </a>
+    <a href="{% url 'lesson_list' %}" class="sidebar-link">
+      <span class="icon">&#128203;</span> Sapak Sanawy
+    </a>
+    <a href="/admin/" class="sidebar-link">
+      <span class="icon">⚙️</span> Dolandyryjy
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    Informatika we Programmirleme<br>Kafedrasy
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main-wrapper">
+
+  <!-- Top Header -->
+  <header class="top-header">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="menu-toggle" id="menuToggle" aria-label="Menyu">☰</button>
+      <h1 class="page-title">{% block page_title %}Sapaklyk Ulgamy{% endblock %}</h1>
+    </div>
+    <div class="header-actions no-print">
+      {% block header_actions %}
+      <button id="btn-print" class="btn btn-secondary btn-sm">🖨️ Çap et</button>
+      {% endblock %}
+    </div>
+  </header>
+
+  <!-- Page Content -->
+  <main class="page-content">
+    {% block content %}{% endblock %}
+  </main>
+
+</div>
+
+<script src="{% static 'js/timetable.js' %}"></script>
+{% block extra_js %}{% endblock %}
+
+<script>
+  // Mobile menu
+  document.getElementById('menuToggle')?.addEventListener('click', function() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('show');
+  });
+  document.getElementById('overlay')?.addEventListener('click', function() {
+    document.getElementById('sidebar').classList.remove('open');
+    this.classList.remove('show');
+  });
+  // Active link
+  const path = window.location.pathname;
+  document.querySelectorAll('.sidebar-link').forEach(link => {
+    const href = link.getAttribute('href');
+    if (href && href !== '/' && path.startsWith(href)) link.classList.add('active');
+    else if (href === '/' && path === '/') link.classList.add('active');
+  });
+</script>
+</body>
+</html>

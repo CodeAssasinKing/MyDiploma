@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Sapak Poz{% endblock %}
+{% block page_title %}🗑️ Sapak Pozmak{% endblock %}
+
+{% block content %}
+<div style="max-width:500px;margin:0 auto;">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title" style="color:var(--danger);">⚠️ Tassyklaň</div>
+    </div>
+    <div class="card-body">
+      <p style="font-size:15px;margin-bottom:16px;">Aşakdaky sapagy pozmak isleýärsiňizmi?</p>
+      <div class="lesson-card {{ lesson.type_css_class }}" style="max-width:100%;margin-bottom:20px;">
+        <div class="lesson-name">{{ lesson.subject.name }}</div>
+        <div class="lesson-meta">
+          <div class="lesson-meta-row"><span>👤</span><span>{{ lesson.teacher.full_name }}</span></div>
+          <div class="lesson-meta-row"><span>👥</span><span>{{ lesson.group.name }} — {{ lesson.get_subgroup_display }}</span></div>
+          <div class="lesson-meta-row"><span>🚪</span><span>{{ lesson.classroom.name }}</span></div>
+          <div class="lesson-meta-row"><span>📅</span><span>{{ lesson.get_day_display }} — {{ lesson.time_slot }}</span></div>
+          <div class="lesson-meta-row"><span>📋</span><span>{{ lesson.get_week_type_display }}</span></div>
+        </div>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+        <div style="display:flex;gap:10px;">
+          <button type="submit" class="btn btn-lg" style="background:var(--danger);color:#fff;">🗑️ Hawa, Poz</button>
+          <a href="{{ next|default:'/' }}" class="btn btn-secondary btn-lg">← Yzyna</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

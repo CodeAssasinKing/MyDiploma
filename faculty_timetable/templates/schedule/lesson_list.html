@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}Sapaklyk Dolandyryş{% endblock %}
+{% block page_title %}📋 Sapaklyk Dolandyryşy{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'lesson_create' %}?next={% url 'lesson_list' %}" class="btn btn-primary btn-sm no-print">➕ Täze Sapak Goş</a>
+<button id="btn-print" class="btn btn-secondary btn-sm no-print">🖨️ Çap et</button>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filter Bar -->
+<form method="get" class="filter-bar no-print" style="flex-wrap:wrap;gap:10px;">
+  <div class="filter-group">
+    <label class="filter-label">Topar</label>
+    <select name="group" class="filter-select" onchange="this.form.submit()">
+      <option value="">— Hemmesi —</option>
+      {% for g in groups %}
+      <option value="{{ g.id }}" {% if f_group == g.id|stringformat:"s" %}selected{% endif %}>
+        {{ g.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">Mugallym</label>
+    <select name="teacher" class="filter-select" onchange="this.form.submit()">
+      <option value="">— Hemmesi —</option>
+      {% for t in teachers %}
+      <option value="{{ t.id }}" {% if f_teacher == t.id|stringformat:"s" %}selected{% endif %}>
+        {{ t }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">Gün</label>
+    <select name="day" class="filter-select" onchange="this.form.submit()">
+      <option value="">— Hemmesi —</option>
+      {% for val, label in days %}
+      <option value="{{ val }}" {% if f_day == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">Hepde</label>
+    <select name="week_type" class="filter-select" onchange="this.form.submit()">
+      <option value="">— Hemmesi —</option>
+      {% for val, label in week_types %}
+      <option value="{{ val }}" {% if f_week_type == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">Görnüş</label>
+    <select name="lesson_type" class="filter-select" onchange="this.form.submit()">
+      <option value="">— Hemmesi —</option>
+      {% for val, label in lesson_types %}
+      <option value="{{ val }}" {% if f_lesson_type == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div style="display:flex;align-items:flex-end;gap:6px;">
+    <a href="{% url 'lesson_list' %}" class="btn btn-secondary btn-sm">Arassala</a>
+    <span class="badge badge-primary" style="padding:6px 12px;font-size:13px;">
+      {{ total }} sapak
+    </span>
+  </div>
+</form>
+
+<!-- Table -->
+{% if lessons %}
+<div class="timetable-wrapper">
+  <table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;">
+    <thead>
+      <tr>
+        <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;font-weight:700;font-size:12px;">#</th>
+        <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;font-weight:700;font-size:12px;">Ders</th>
+        <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;font-weight:700;font-size:12px;">Mugallym</th>
+        <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;font-weight:700;font-size:12px;">Topar</th>
+        <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;font-weight:700;font-size:12px;">Otag</th>
+        <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;font-weight:700;font-size:12px;">Gün / Wagt</th>
+        <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;font-weight:700;font-size:12px;">Hepde</th>
+        <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:left;font-weight:700;font-size:12px;">Görnüş</th>
+        <th style="background:var(--primary);color:#fff;padding:10px 12px;text-align:center;font-weight:700;font-size:12px;" class="no-print">Işler</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lesson in lessons %}
+      <tr class="lesson-list-row" style="border-bottom:1px solid var(--border);">
+        <td style="padding:8px 12px;color:var(--text-muted);font-size:12px;">{{ forloop.counter }}</td>
+        <td style="padding:8px 12px;">
+          <span style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:14px;">{% if lesson.lesson_type == 'LAB' %}🔬{% elif lesson.lesson_type == 'LEC' %}📢{% else %}📖{% endif %}</span>
+            <span style="font-weight:600;">{{ lesson.subject.name }}</span>
+          </span>
+        </td>
+        <td style="padding:8px 12px;">
+          <a href="{% url 'teacher_timetable' lesson.teacher.id %}" style="color:var(--primary);text-decoration:none;font-weight:500;">
+            {{ lesson.teacher }}
+          </a>
+          {% if lesson.teacher.can_teach_english %}<span class="lang-tag lang-en" style="margin-left:4px;">EN</span>{% endif %}
+        </td>
+        <td style="padding:8px 12px;">
+          <a href="{% url 'group_timetable' lesson.group.id %}" style="color:var(--primary);text-decoration:none;font-weight:600;">
+            {{ lesson.group.name }}
+          </a>
+          {% if lesson.subgroup != 'FULL' %}
+          <span class="subgroup-tag" style="margin-left:4px;">{{ lesson.get_subgroup_display }}</span>
+          {% endif %}
+        </td>
+        <td style="padding:8px 12px;">
+          <a href="{% url 'classroom_timetable' lesson.classroom.id %}" style="color:var(--primary);text-decoration:none;">
+            {{ lesson.classroom.name }}
+          </a>
+        </td>
+        <td style="padding:8px 12px;">
+          <span style="font-weight:600;">{{ lesson.get_day_display }}</span>
+          <span style="display:block;font-size:11px;color:var(--text-muted);">
+            {{ lesson.time_slot.number }}-nji · {{ lesson.time_slot.start_time|time:"H:i" }}–{{ lesson.time_slot.end_time|time:"H:i" }}
+          </span>
+        </td>
+        <td style="padding:8px 12px;">
+          {% if lesson.week_type == 'ODD' %}
+          <span class="week-tag tag-odd" style="position:static;display:inline-block;">Täk</span>
+          {% elif lesson.week_type == 'EVEN' %}
+          <span class="week-tag tag-even" style="position:static;display:inline-block;">Jübüt</span>
+          {% else %}
+          <span class="week-tag tag-both" style="position:static;display:inline-block;">Her</span>
+          {% endif %}
+        </td>
+        <td style="padding:8px 12px;">
+          <span class="type-tag {% if lesson.lesson_type == 'LAB' %}lab{% elif lesson.lesson_type == 'LEC' %}lec{% else %}sim{% endif %}">
+            {{ lesson.get_lesson_type_display }}
+          </span>
+        </td>
+        <td style="padding:6px 10px;text-align:center;white-space:nowrap;" class="no-print">
+          <a href="{% url 'lesson_edit' lesson.id %}?next={{ request.get_full_path }}" class="tbl-action-btn edit" title="Düzet">✏️ Düzet</a>
+          <a href="{% url 'lesson_delete' lesson.id %}?next={{ request.get_full_path }}" class="tbl-action-btn del" title="Poz">🗑️</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div style="text-align:center;padding:60px 20px;color:var(--text-muted);">
+  <div style="font-size:52px;margin-bottom:16px;">📭</div>
+  <h3 style="margin-bottom:8px;">Sapak tapylmady</h3>
+  <p>Süzgüç arassalaň ýa-da täze sapak goşuň.</p>
+  <a href="{% url 'lesson_create' %}?next={% url 'lesson_list' %}" class="btn btn-primary" style="margin-top:16px;">➕ Täze Sapak Goş</a>
+</div>
+{% endif %}
+
+<style>
+.lesson-list-row:hover { background: var(--primary-light); }
+.tbl-action-btn {
+  display:inline-flex;align-items:center;gap:3px;
+  padding:4px 8px;border-radius:5px;font-size:11px;font-weight:600;
+  text-decoration:none;border:1px solid var(--border);
+  background:#fff;color:var(--text);transition:all 0.15s;margin:1px;
+}
+.tbl-action-btn.edit:hover { background:#dbeafe;border-color:var(--primary); }
+.tbl-action-btn.del:hover  { background:#fee2e2;border-color:var(--danger); }
+</style>
+{% endblock %}

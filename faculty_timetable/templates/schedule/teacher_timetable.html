@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}{{ teacher }} — Sapaklyk{% endblock %}
+{% block page_title %}👨‍🏫 {{ teacher.full_name }}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'lesson_create' %}?teacher={{ teacher.id }}&next={{ request.get_full_path }}" class="btn btn-primary btn-sm no-print">➕ Sapak Goş</a>
+<button id="btn-print" class="btn btn-secondary btn-sm no-print">🖨️ Çap et</button>
+{% endblock %}
+
+{% block content %}
+
+<div class="filter-bar no-print" style="justify-content:space-between;">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div class="filter-group">
+      <span class="filter-label">Mugallym:</span>
+      <select class="filter-select" onchange="window.location='/mugallymlar/'+this.value+'/?week_type={{ week_type }}'">
+        {% for t in teachers %}
+        <option value="{{ t.id }}" {% if t.id == teacher.id %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Hepde:</span>
+      <div class="week-toggle">
+        <a href="?week_type=ODD" class="week-btn {% if week_type == 'ODD' %}active-odd{% endif %}">🔴 Täk</a>
+        <a href="?week_type=EVEN" class="week-btn {% if week_type == 'EVEN' %}active-even{% endif %}">🔵 Jübüt</a>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;">
+    {% if teacher.can_teach_english %}<span class="badge badge-warning">🇬🇧 Iňlisçe</span>{% endif %}
+    <span class="badge badge-primary">{{ teacher.position }}</span>
+    <span class="badge badge-primary">{{ teacher.department.short_name }}</span>
+  </div>
+</div>
+
+<div class="week-indicator {% if week_type == 'ODD' %}odd{% else %}even{% endif %} no-print">
+  {% if week_type == 'ODD' %}🔴 Täk hepde{% else %}🔵 Jübüt hepde{% endif %}
+</div>
+
+<div class="timetable-wrapper">
+  <table class="timetable-table" style="min-width:600px;">
+    <thead>
+      <tr>
+        <th style="min-width:100px;">Wagt</th>
+        <th>Ders</th>
+        <th>Topar</th>
+        <th>Otag</th>
+        <th>Görnüş / Hepde</th>
+        <th class="no-print" style="width:80px;">Işler</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for day_data in timetable_rows %}
+      <tr data-day="{{ day_data.day_code }}">
+        <th colspan="6" class="day-row" style="background:linear-gradient(90deg,#1e3a8a,#1a56a0);color:#fff;padding:8px 14px;font-size:13px;font-weight:700;text-align:left;">
+          📅 {{ day_data.day_name }}
+        </th>
+      </tr>
+      {% for row in day_data.rows %}
+      {% if row.lessons %}
+        {% for lesson in row.lessons %}
+        <tr>
+          {% if forloop.first %}
+          <td class="time-cell" rowspan="{{ row.lessons|length }}">
+            <span class="slot-num">{{ row.timeslot.number }}-nji</span>
+            <span class="slot-time">{{ row.timeslot.start_time|time:"H:i" }}–{{ row.timeslot.end_time|time:"H:i" }}</span>
+            <span class="slot-shift">{{ row.timeslot.shift }}-nji çalşyk</span>
+          </td>
+          {% endif %}
+          <td style="padding:8px 10px;font-weight:600;font-size:13px;">
+            {% if lesson.lesson_type == 'LAB' %}🔬{% elif lesson.lesson_type == 'LEC' %}📢{% else %}📖{% endif %}
+            {{ lesson.subject.name }}
+          </td>
+          <td style="padding:8px 10px;font-size:13px;">
+            {{ lesson.group.name }}
+            {% if lesson.subgroup != 'FULL' %}
+            <span class="subgroup-tag">{{ lesson.get_subgroup_display }}</span>
+            {% endif %}
+          </td>
+          <td style="padding:8px 10px;font-size:13px;">{{ lesson.classroom.name }}</td>
+          <td style="padding:8px 10px;">
+            <span class="type-tag {% if lesson.lesson_type == 'LAB' %}lab{% elif lesson.lesson_type == 'LEC' %}lec{% else %}sim{% endif %}">
+              {{ lesson.get_lesson_type_display }}
+            </span>
+            {% if lesson.week_type == 'ODD' %}
+            <span class="week-tag tag-odd" style="position:static;display:inline-block;margin-left:4px;">Täk</span>
+            {% elif lesson.week_type == 'EVEN' %}
+            <span class="week-tag tag-even" style="position:static;display:inline-block;margin-left:4px;">Jübüt</span>
+            {% else %}
+            <span class="week-tag tag-both" style="position:static;display:inline-block;margin-left:4px;">Her</span>
+            {% endif %}
+            {% if lesson.language == 'EN' %}<span class="lang-tag lang-en" style="margin-left:3px;">EN</span>{% endif %}
+          </td>
+          <td style="padding:6px 8px;white-space:nowrap;" class="no-print">
+            <a href="{% url 'lesson_edit' lesson.id %}?next={{ request.get_full_path }}" class="tbl-action-btn edit">✏️</a>
+            <a href="{% url 'lesson_delete' lesson.id %}?next={{ request.get_full_path }}" class="tbl-action-btn del">🗑️</a>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td class="time-cell">
+            <span class="slot-num">{{ row.timeslot.number }}-nji</span>
+            <span class="slot-time">{{ row.timeslot.start_time|time:"H:i" }}–{{ row.timeslot.end_time|time:"H:i" }}</span>
+          </td>
+          <td colspan="5" style="padding:6px 10px;color:var(--text-muted);font-size:12px;">
+            <a href="{% url 'lesson_create' %}?day={{ day_data.day_code }}&slot={{ row.timeslot.id }}&next={{ request.get_full_path }}"
+               class="quick-add-btn no-print">➕ Sapak goş</a>
+          </td>
+        </tr>
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+.tbl-action-btn {
+  display:inline-flex;align-items:center;padding:3px 8px;border-radius:5px;
+  font-size:12px;font-weight:600;text-decoration:none;
+  border:1px solid var(--border);background:#fff;color:var(--text);
+  transition:all 0.15s;margin:1px;
+}
+.tbl-action-btn.edit:hover{background:#dbeafe;border-color:var(--primary);}
+.tbl-action-btn.del:hover{background:#fee2e2;border-color:var(--danger);}
+.quick-add-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;
+  text-decoration:none;color:var(--primary);border:1px dashed var(--primary);
+  background:var(--primary-light);opacity:0;transition:opacity 0.2s;
+}
+tr:hover .quick-add-btn{opacity:1;}
+</style>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Synp Otaglary{% endblock %}
+{% block page_title %}Synp Otaglary{% endblock %}
+
+{% block content %}
+<div class="list-grid">
+  {% for classroom in classrooms %}
+  <a href="{% url 'classroom_timetable' classroom.id %}" class="list-card">
+    <div class="list-card-icon" style="background:{% if classroom.classroom_type == 'LAB' %}#f5f0ff{% elif classroom.classroom_type == 'LEC' %}#e0f2fe{% else %}#d1fae5{% endif %};">
+      {% if classroom.classroom_type == 'LAB' %}🔬{% elif classroom.classroom_type == 'LEC' %}📢{% else %}🏫{% endif %}
+    </div>
+    <div class="list-card-body">
+      <div class="list-card-title">{{ classroom.name }}</div>
+      <div class="list-card-sub">
+        {{ classroom.get_classroom_type_display }}
+        • Kuwwat: {{ classroom.capacity }}
+        {% if classroom.building %} • {{ classroom.building }}{% endif %}
+      </div>
+    </div>
+    <span style="color:var(--text-muted);font-size:18px;">›</span>
+  </a>
+  {% empty %}
+  <p style="color:var(--text-muted);">Synp otagy ýok.</p>
+  {% endfor %}
+</div>
+{% endblock %}

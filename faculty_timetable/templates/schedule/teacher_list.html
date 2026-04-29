@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Mugallymlar{% endblock %}
+{% block page_title %}Mugallymlar Sanawy{% endblock %}
+
+{% block content %}
+<div class="list-grid">
+  {% for teacher in teachers %}
+  <a href="{% url 'teacher_timetable' teacher.id %}" class="list-card">
+    <div class="list-card-icon" style="background:{% if teacher.can_teach_english %}#fef3c7{% else %}var(--primary-light){% endif %};">
+      👨‍🏫
+    </div>
+    <div class="list-card-body">
+      <div class="list-card-title">{{ teacher.full_name }}</div>
+      <div class="list-card-sub">
+        {{ teacher.position }} • {{ teacher.department.short_name }}
+        {% if teacher.can_teach_english %}
+        <span class="badge badge-warning" style="margin-left:4px;">EN</span>
+        {% endif %}
+      </div>
+    </div>
+    <span style="color:var(--text-muted);font-size:18px;">›</span>
+  </a>
+  {% empty %}
+  <p style="color:var(--text-muted);">Mugallym ýok. Maglumat ýükläň.</p>
+  {% endfor %}
+</div>
+{% endblock %}

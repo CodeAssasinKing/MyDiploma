@@ -1,0 +1,604 @@
+{% extends 'base.html' %}
+{% block title %}{% if edit_mode %}Sapak Düzet{% else %}Sapak Goş{% endif %}{% endblock %}
+{% block page_title %}{% if edit_mode %}✏️ Sapak Düzet{% else %}➕ Täze Sapak Goş{% endif %}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'timetable' %}" class="btn btn-secondary btn-sm">← Sapaklaryň tertibi</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Error summary -->
+{% if form.errors %}
+<div class="error-banner">
+  <div class="error-banner-icon">⚠️</div>
+  <div>
+    <strong>Ýalňyşlyklar bar:</strong>
+    {% for error in form.non_field_errors %}
+    <div class="error-msg">{{ error }}</div>
+    {% endfor %}
+    {% for field in form %}
+      {% if field.errors %}
+      <div class="error-msg">{{ field.label }}: {{ field.errors|join:", " }}</div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="form-layout">
+
+  <!-- LEFT: Main Form -->
+  <div class="form-main">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          {% if edit_mode %}✏️ Sapagy Üýtget{% else %}📋 Sapak Maglumatlary{% endif %}
+        </div>
+        {% if edit_mode and lesson %}
+        <span class="badge badge-primary">ID: {{ lesson.id }}</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <form method="post" id="lessonForm">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ next_url }}">
+
+          <!-- Row 1: Lesson type + Language -->
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label required">Sapak görnüşi</label>
+              <div class="type-selector" id="typeSelector">
+                {% for val, label in lesson_types %}
+                <label class="type-option type-{{ val|lower }}" data-type="{{ val }}">
+                  <input type="radio" name="lesson_type" value="{{ val }}"
+                    {% if form.lesson_type.value == val %}checked{% endif %}
+                    {% if not form.lesson_type.value and val == 'SIM' %}checked{% endif %}>
+                  <span class="type-icon">
+                    {% if val == 'LAB' %}🔬{% elif val == 'LEC' %}📢{% else %}📖{% endif %}
+                  </span>
+                  <span class="type-label">{{ label }}</span>
+                </label>
+                {% endfor %}
+              </div>
+              {% if form.lesson_type.errors %}<div class="field-error">{{ form.lesson_type.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label required">Dil</label>
+              <div class="lang-selector" id="langSelector">
+                {% for val, label in languages %}
+                <label class="lang-option lang-{{ val|lower }}">
+                  <input type="radio" name="language" value="{{ val }}"
+                    {% if form.language.value == val %}checked{% endif %}
+                    {% if not form.language.value and val == 'TM' %}checked{% endif %}>
+                  <span>{% if val == 'TM' %}{% elif val == 'EN' %}{% else %}{% endif %} {{ label }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 2: Group + Subgroup -->
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label required" for="id_group">Topar</label>
+              <select name="group" id="id_group" class="form-select">
+                <option value="">— Topar saýlaň —</option>
+                {% for g in groups %}
+                <option value="{{ g.id }}"
+                  data-type="{{ g.group_type }}"
+                  data-course="{{ g.course }}"
+                  {% if form.group.value|stringformat:"s" == g.id|stringformat:"s" %}selected{% endif %}>
+                  {{ g.name }} ({{ g.course }}-kurs, {{ g.get_group_type_display }})
+                </option>
+                {% endfor %}
+              </select>
+              {% if form.group.errors %}<div class="field-error">{{ form.group.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label required">Kiçi topar</label>
+              <div class="subgroup-selector">
+                {% for val, label in subgroups %}
+                <label class="subgroup-option" data-val="{{ val }}">
+                  <input type="radio" name="subgroup" value="{{ val }}"
+                    {% if form.subgroup.value == val %}checked{% endif %}
+                    {% if not form.subgroup.value and val == 'FULL' %}checked{% endif %}>
+                  <span>{% if val == 'FULL' %}👥 {{ label }}{% elif val == 'SUB1' %}1️⃣ {{ label }}{% else %}2️⃣ {{ label }}{% endif %}</span>
+                </label>
+                {% endfor %}
+              </div>
+              <div class="field-hint" id="subgroupHint"></div>
+            </div>
+          </div>
+
+          <!-- Row 3: Subject + Teacher -->
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label required" for="id_subject">Ders</label>
+              <select name="subject" id="id_subject" class="form-select">
+                <option value="">— Ders saýlaň —</option>
+                {% for s in subjects %}
+                <option value="{{ s.id }}"
+                  data-type="{{ s.subject_type }}"
+                  {% if form.subject.value|stringformat:"s" == s.id|stringformat:"s" %}selected{% endif %}>
+                  {{ s.name }} ({{ s.get_subject_type_display }})
+                </option>
+                {% endfor %}
+              </select>
+              <div class="field-hint">Sapak görnüşine görä süzülýär</div>
+              {% if form.subject.errors %}<div class="field-error">{{ form.subject.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label required" for="id_teacher">Mugallym</label>
+              <select name="teacher" id="id_teacher" class="form-select">
+                <option value="">— Mugallym saýlaň —</option>
+                {% for t in teachers %}
+                <option value="{{ t.id }}"
+                  data-eng="{{ t.can_teach_english|lower }}"
+                  {% if form.teacher.value|stringformat:"s" == t.id|stringformat:"s" %}selected{% endif %}>
+                  {{ t.full_name }}{% if t.can_teach_english %}{% endif %}
+                </option>
+                {% endfor %}
+              </select>
+              <div class="field-hint" id="teacherHint"></div>
+              {% if form.teacher.errors %}<div class="field-error">{{ form.teacher.errors }}</div>{% endif %}
+            </div>
+          </div>
+
+          <!-- Row 4: Classroom -->
+          <div class="form-group">
+            <label class="form-label required" for="id_classroom">Synp otagy</label>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;">
+              <select name="classroom" id="id_classroom" class="form-select">
+                <option value="">— Otag saýlaň —</option>
+                {% for c in classrooms %}
+                <option value="{{ c.id }}"
+                  data-type="{{ c.classroom_type }}"
+                  data-cap="{{ c.capacity }}"
+                  {% if form.classroom.value|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
+                  {{ c.name }} — {{ c.get_classroom_type_display }} ({{ c.capacity }} orun{% if c.building %}, {{ c.building }}{% endif %})
+                </option>
+                {% endfor %}
+              </select>
+              <div class="classroom-badge" id="classroomBadge"></div>
+            </div>
+            <div class="field-hint">Laboratoriýa sapagy diňe laboratoriýa otagynda bolup biler</div>
+            {% if form.classroom.errors %}<div class="field-error">{{ form.classroom.errors }}</div>{% endif %}
+          </div>
+
+          <!-- Row 5: Day + Time slot + Week type -->
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label required" for="id_day">Gün</label>
+              <select name="day" id="id_day" class="form-select">
+                <option value="">— Gün —</option>
+                {% for val, label in days %}
+                <option value="{{ val }}" {% if form.day.value == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              {% if form.day.errors %}<div class="field-error">{{ form.day.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label required" for="id_time_slot">Wagt jübüdi</label>
+              <select name="time_slot" id="id_time_slot" class="form-select">
+                <option value="">— Wagt —</option>
+                {% for ts in time_slots %}
+                <option value="{{ ts.id }}"
+                  data-shift="{{ ts.shift }}"
+                  {% if form.time_slot.value|stringformat:"s" == ts.id|stringformat:"s" %}selected{% endif %}>
+                  {{ ts.number }}-nji ({{ ts.start_time|time:"H:i" }}–{{ ts.end_time|time:"H:i" }}, {{ ts.shift }}-çalşyk)
+                </option>
+                {% endfor %}
+              </select>
+              {% if form.time_slot.errors %}<div class="field-error">{{ form.time_slot.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label required">Hepde görnüşi</label>
+              <div class="week-selector">
+                {% for val, label in week_types %}
+                <label class="week-option week-{{ val|lower }}">
+                  <input type="radio" name="week_type" value="{{ val }}"
+                    {% if form.week_type.value == val %}checked{% endif %}
+                    {% if not form.week_type.value and val == 'BOTH' %}checked{% endif %}>
+                  <span>
+                    {% if val == 'ODD' %}🔴{% elif val == 'EVEN' %}🔵{% else %}🟢{% endif %}
+                    {{ label }}
+                  </span>
+                </label>
+                {% endfor %}
+              </div>
+              {% if form.week_type.errors %}<div class="field-error">{{ form.week_type.errors }}</div>{% endif %}
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="form-actions">
+            {% if edit_mode %}
+            <button type="submit" class="btn btn-primary btn-lg">💾 Üýtgetmeleri Sakla</button>
+            <a href="{% url 'lesson_delete' lesson.id %}?next={{ next_url }}" class="btn btn-danger btn-lg">🗑️ Poz</a>
+            {% else %}
+            <button type="submit" class="btn btn-primary btn-lg">✅ Sapak Goş</button>
+            <button type="submit" class="btn btn-secondary btn-lg" formaction="{% url 'lesson_create' %}">➕ Goş we Ýene Goş</button>
+            {% endif %}
+            <a href="{% url 'timetable' %}" class="btn btn-secondary btn-lg">Yzyna</a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Info Panel -->
+  <div class="form-sidebar">
+
+    <!-- Live preview card -->
+    <div class="card" id="previewCard" style="margin-bottom:16px;">
+      <div class="card-header">
+        <div class="card-title">👁️ Sapagyň görnüşi </div>
+      </div>
+      <div class="card-body" style="padding:12px;">
+        <div id="previewContent" class="lesson-card lesson-sim" style="max-width:100%;">
+          <span class="week-tag tag-both" id="prevWeek" style="position:static;display:inline-block;margin-bottom:6px;">Her</span>
+          <div class="lesson-name" id="prevSubject">— Ders saýlaň —</div>
+          <div class="lesson-meta">
+            <div class="lesson-meta-row"><span class="icon">👤</span><span id="prevTeacher">—</span></div>
+            <div class="lesson-meta-row"><span class="icon">👥</span><span id="prevGroup">—</span></div>
+            <div class="lesson-meta-row"><span class="icon">🚪</span><span id="prevClassroom">—</span></div>
+            <div class="lesson-meta-row"><span class="icon">📅</span><span id="prevDay">—</span></div>
+            <div class="lesson-meta-row"><span class="icon">⏰</span><span id="prevTime">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">ℹ️ Kömek</div>
+      </div>
+      <div class="card-body" style="padding:12px;font-size:12px;line-height:1.7;color:var(--text-muted);">
+        <p><strong>🔬 Laboratoriýa:</strong> Diňe tejribe otagda. Kiçi topar (SUB1/SUB2) saýlaň.</p>
+        <p style="margin-top:8px;"><strong>📢 Leksiýa:</strong> Doly topar bilen, Leksiýa zalda.</p>
+        <p style="margin-top:8px;"><strong>🔴 Täk / 🔵 Jübüt:</strong> Her çalşan hepde üçin — laboratoriýada ulanylýar.</p>
+        <p style="margin-top:8px;"><strong> Iňlis topar:</strong> Topar saýlanyňda diňe iňlisçe okadyp bilýän mugallymlar görkezilýär.</p>
+        <p style="margin-top:8px;"><strong>⚠️ Gapma-garşylyk:</strong> Şol bir wagt jübüdinde mugallym ýa-da otag başga sapakda bolsa, ulgam habar berýär.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+/* Form layout */
+.form-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .form-layout { grid-template-columns: 1fr; }
+  .form-sidebar { order: -1; }
+}
+
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+@media (max-width: 700px) {
+  .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
+}
+
+.form-group { margin-bottom: 18px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.form-label.required::after {
+  content: ' *';
+  color: var(--danger);
+}
+.form-select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: #fff;
+  color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(26,86,160,0.12);
+}
+.field-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.field-error { font-size: 12px; color: var(--danger); margin-top: 4px; font-weight: 600; }
+
+/* Type selector (radio cards) */
+.type-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.type-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fafafa;
+  text-align: center;
+}
+.type-option input[type=radio] { display: none; }
+.type-option:has(input:checked) { border-color: var(--primary); background: var(--primary-light); }
+.type-option.type-lab:has(input:checked) { border-color: var(--lab-color); background: var(--lab-bg); }
+.type-option.type-lec:has(input:checked) { border-color: var(--lec-color); background: var(--lec-bg); }
+.type-option.type-sim:has(input:checked) { border-color: var(--sim-color); background: var(--sim-bg); }
+.type-option:hover { border-color: var(--primary); }
+.type-icon { font-size: 22px; margin-bottom: 4px; }
+.type-label { font-size: 11px; font-weight: 700; color: var(--text); }
+
+/* Lang selector */
+.lang-selector { display: flex; gap: 8px; flex-wrap: wrap; }
+.lang-option {
+  display: flex; align-items: center;
+  padding: 8px 14px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 6px;
+  transition: all 0.2s;
+}
+.lang-option input { display: none; }
+.lang-option:has(input:checked) { border-color: var(--primary); background: var(--primary-light); }
+
+/* Subgroup selector */
+.subgroup-selector { display: flex; gap: 8px; flex-wrap: wrap; }
+.subgroup-option {
+  display: flex; align-items: center;
+  padding: 8px 12px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.subgroup-option input { display: none; }
+.subgroup-option:has(input:checked) { border-color: var(--primary); background: var(--primary-light); }
+.subgroup-option[data-val="LAB"] { display: none; }
+
+/* Week selector */
+.week-selector { display: flex; flex-direction: column; gap: 5px; }
+.week-option {
+  display: flex; align-items: center;
+  padding: 7px 10px;
+  border: 2px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+  transition: all 0.2s;
+}
+.week-option input { display: none; }
+.week-option.week-odd:has(input:checked) { border-color: var(--odd-color); background: var(--odd-bg); color: var(--odd-color); }
+.week-option.week-even:has(input:checked) { border-color: var(--even-color); background: var(--even-bg); color: var(--even-color); }
+.week-option.week-both:has(input:checked) { border-color: #166534; background: #f0fdf4; color: #166534; }
+
+/* Form actions */
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover { background: #c0392b; color: #fff; }
+
+/* Error banner */
+.error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fef2f2;
+  border: 1.5px solid #fca5a5;
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+.error-banner-icon { font-size: 20px; flex-shrink: 0; }
+.error-msg { color: var(--danger); margin-top: 4px; }
+
+.classroom-badge {
+  display: flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1.5px solid transparent;
+}
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ─── Day names map ───
+const dayNames = {
+  MON: 'Duşenbe', TUE: 'Sişenbe', WED: 'Çarşenbe',
+  THU: 'Penşenbe', FRI: 'Anna', SAT: 'Şenbe', SUN: 'Ýekşenbe'
+};
+
+// ─── Select helpers ───
+function selText(id) {
+  const el = document.getElementById(id);
+  if (!el || !el.value) return '—';
+  return el.options[el.selectedIndex]?.text || '—';
+}
+function radioVal(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : '';
+}
+
+// ─── Update live preview ───
+function updatePreview() {
+  const type   = radioVal('lesson_type') || 'SIM';
+  const week   = radioVal('week_type')   || 'BOTH';
+  const lang   = radioVal('language')    || 'TM';
+
+  // Card class
+  const card = document.getElementById('previewContent');
+  card.className = 'lesson-card ' + {LAB:'lesson-lab', LEC:'lesson-lec', SIM:'lesson-sim'}[type];
+
+  // Week tag
+  const wt = document.getElementById('prevWeek');
+  wt.className = 'week-tag ' + {ODD:'tag-odd', EVEN:'tag-even', BOTH:'tag-both'}[week];
+  wt.style.cssText = 'position:static;display:inline-block;margin-bottom:6px;';
+  wt.textContent = {ODD:'Täk', EVEN:'Jübüt', BOTH:'Her'}[week];
+
+  document.getElementById('prevSubject').textContent  = selText('id_subject').split(' (')[0];
+  document.getElementById('prevTeacher').textContent  = selText('id_teacher').replace(/🇬🇧/g,'').trim();
+  document.getElementById('prevGroup').textContent    = selText('id_group').split(' (')[0];
+  document.getElementById('prevClassroom').textContent= selText('id_classroom').split(' —')[0];
+
+  const dayVal = document.getElementById('id_day')?.value;
+  document.getElementById('prevDay').textContent = dayVal ? dayNames[dayVal] || dayVal : '—';
+
+  const ts = document.getElementById('id_time_slot');
+  if (ts && ts.value) {
+    const opt = ts.options[ts.selectedIndex];
+    document.getElementById('prevTime').textContent = opt.text.match(/\d+:\d+–\d+:\d+/)?.[0] || opt.text;
+  } else {
+    document.getElementById('prevTime').textContent = '—';
+  }
+}
+
+// ─── Smart: filter subjects by lesson_type ───
+function filterSubjects() {
+  const type = radioVal('lesson_type') || '';
+  const sel  = document.getElementById('id_subject');
+  const cur  = sel.value;
+  Array.from(sel.options).forEach(opt => {
+    if (!opt.value) return;
+    opt.style.display = (!type || opt.dataset.type === type) ? '' : 'none';
+  });
+  // Auto-deselect if current is hidden
+  const curOpt = sel.querySelector(`option[value="${cur}"]`);
+  if (curOpt && curOpt.style.display === 'none') sel.value = '';
+  updatePreview();
+}
+
+// ─── Smart: filter classrooms by lesson_type ───
+function filterClassrooms() {
+  const type = radioVal('lesson_type') || '';
+  const sel  = document.getElementById('id_classroom');
+  const cur  = sel.value;
+  const badge= document.getElementById('classroomBadge');
+  Array.from(sel.options).forEach(opt => {
+    if (!opt.value) return;
+    const ct = opt.dataset.type;
+    let show = true;
+    if (type === 'LAB' && ct !== 'LAB') show = false;
+    opt.style.display = show ? '' : 'none';
+  });
+  const curOpt = sel.querySelector(`option[value="${cur}"]`);
+  if (curOpt && curOpt.style.display === 'none') { sel.value = ''; badge.textContent = ''; }
+  updateClassroomBadge();
+  // Show subgroup hint for LAB
+  const hint = document.getElementById('subgroupHint');
+  if (type === 'LAB') {
+    hint.textContent = '⚠️ Laboratoriýa üçin SUB1 ýa-da SUB2 saýlaň';
+    hint.style.color = 'var(--odd-color)';
+  } else {
+    hint.textContent = '';
+  }
+}
+
+function updateClassroomBadge() {
+  const sel   = document.getElementById('id_classroom');
+  const badge = document.getElementById('classroomBadge');
+  if (!sel.value) { badge.textContent = ''; badge.style.background = ''; return; }
+  const opt  = sel.options[sel.selectedIndex];
+  const type = opt.dataset.type;
+  const cap  = opt.dataset.cap;
+  const colors = {LAB:['#f5f0ff','#7c3aed'], LEC:['#e0f2fe','#0369a1'], SIM:['#d1fae5','#047857']};
+  const [bg, color] = colors[type] || ['#f1f5f9','#374151'];
+  badge.style.background = bg;
+  badge.style.color = color;
+  badge.style.borderColor = color;
+  badge.textContent = `${opt.text.split('—')[1]?.split('(')[0]?.trim() || type} · ${cap} orun`;
+}
+
+// ─── Smart: filter teachers for English groups ───
+function filterTeachers() {
+  const groupSel = document.getElementById('id_group');
+  const tSel     = document.getElementById('id_teacher');
+  const hint     = document.getElementById('teacherHint');
+  if (!groupSel.value) return;
+  const grpOpt   = groupSel.options[groupSel.selectedIndex];
+  const isEng    = grpOpt.dataset.type === 'EN';
+  const cur      = tSel.value;
+  Array.from(tSel.options).forEach(opt => {
+    if (!opt.value) return;
+    if (isEng) {
+      opt.style.display = opt.dataset.eng === 'true' ? '' : 'none';
+    } else {
+      opt.style.display = '';
+    }
+  });
+  const curOpt = tSel.querySelector(`option[value="${cur}"]`);
+  if (curOpt && curOpt.style.display === 'none') tSel.value = '';
+  hint.textContent = isEng ? '🇬🇧 Diňe iňlisçe okadyp bilýän mugallymlar görkezilýär' : '';
+  hint.style.color = 'var(--odd-color)';
+  updatePreview();
+}
+
+// ─── Event listeners ───
+document.querySelectorAll('input[name="lesson_type"]').forEach(el =>
+  el.addEventListener('change', () => { filterSubjects(); filterClassrooms(); updatePreview(); })
+);
+document.querySelectorAll('input[name="week_type"], input[name="subgroup"], input[name="language"]').forEach(el =>
+  el.addEventListener('change', updatePreview)
+);
+document.getElementById('id_group')    ?.addEventListener('change', () => { filterTeachers(); updatePreview(); });
+document.getElementById('id_subject')  ?.addEventListener('change', updatePreview);
+document.getElementById('id_teacher')  ?.addEventListener('change', updatePreview);
+document.getElementById('id_classroom')?.addEventListener('change', () => { updateClassroomBadge(); updatePreview(); });
+document.getElementById('id_day')      ?.addEventListener('change', updatePreview);
+document.getElementById('id_time_slot')?.addEventListener('change', updatePreview);
+
+// ─── Init on page load ───
+filterSubjects();
+filterClassrooms();
+filterTeachers();
+updatePreview();
+</script>
+{% endblock %}

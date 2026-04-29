@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}Baş Sahypa{% endblock %}
+{% block page_title %}Baş Sahypa{% endblock %}
+
+{% block content %}
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon blue">👥</div>
+    <div>
+      <div class="stat-value">{{ groups_count }}</div>
+      <div class="stat-label">Topar</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green">👨‍🏫</div>
+    <div>
+      <div class="stat-value">{{ teachers_count }}</div>
+      <div class="stat-label">Mugallym</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple">🏛️</div>
+    <div>
+      <div class="stat-value">{{ classrooms_count }}</div>
+      <div class="stat-label">Synp otagy</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon orange">📚</div>
+    <div>
+      <div class="stat-value">{{ subjects_count }}</div>
+      <div class="stat-label">Ders</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon blue">📋</div>
+    <div>
+      <div class="stat-value">{{ lessons_count }}</div>
+      <div class="stat-label">Sapak ýazgysy</div>
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+  <!-- Groups -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">👥 Toparlar</div>
+      <a href="{% url 'timetable' %}" class="btn btn-primary btn-sm">Sapak tertibi →</a>
+    </div>
+    <div class="card-body" style="padding:12px;">
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        {% for group in groups %}
+        <a href="{% url 'group_timetable' group.id %}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text);transition:background 0.2s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background=''">
+          <span style="font-weight:600;font-size:13px;">{{ group.name }}</span>
+          <span style="display:flex;align-items:center;gap:6px;">
+            <span class="badge {% if group.group_type == 'EN' %}badge-warning{% elif group.group_type == 'RU' %}badge-primary{% else %}badge-success{% endif %}">{{ group.get_group_type_display }}</span>
+            <span class="badge badge-primary">{{ group.course }}-nji kurs</span>
+          </span>
+        </a>
+        {% empty %}
+        <p style="color:var(--text-muted);text-align:center;padding:20px;">Topar ýok. Maglumat ýükläň.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Teachers -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">👨‍🏫 Mugallymlar</div>
+      <a href="{% url 'teacher_list' %}" class="btn btn-outline btn-sm">Hemmesini gör →</a>
+    </div>
+    <div class="card-body" style="padding:12px;">
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        {% for teacher in teachers %}
+        <a href="{% url 'teacher_timetable' teacher.id %}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text);transition:background 0.2s;" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background=''">
+          <span style="font-weight:600;font-size:13px;">{{ teacher }}</span>
+          <span style="display:flex;align-items:center;gap:5px;">
+            {% if teacher.can_teach_english %}
+            <span class="badge badge-warning" title="Iňlis dilinde okadyp bilýär">EN</span>
+            {% endif %}
+            <span class="badge badge-primary">{{ teacher.position }}</span>
+          </span>
+        </a>
+        {% empty %}
+        <p style="color:var(--text-muted);text-align:center;padding:20px;">Mugallym ýok.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Legend -->
+<div class="card" style="margin-top:20px;">
+  <div class="card-header">
+    <div class="card-title">ℹ️ Sapak görnüşleriniň düşündirişi</div>
+  </div>
+  <div class="card-body">
+    <div class="legend" style="gap:16px;">
+      <div class="legend-item">
+        <div class="legend-dot lab"></div>
+        <span><strong>Laboratoriýa</strong> — Topar iki kiçi topara bölünýär. Täk/jübüt hepde</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot lec"></div>
+        <span><strong>Leksiýa</strong> — Uly zal, doly topar bilen</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot sim"></div>
+        <span><strong>Adaty sapak</strong> — Adaty synp otag</span>
+      </div>
+    </div>
+    <div class="legend" style="gap:16px;margin-top:10px;">
+      <div class="legend-item">
+        <span class="week-tag tag-odd" style="position:static;">Täk</span>
+        <span>Täk hepde</span>
+      </div>
+      <div class="legend-item">
+        <span class="week-tag tag-even" style="position:static;">Jübüt</span>
+        <span>Jübüt hepde</span>
+      </div>
+      <div class="legend-item">
+        <span class="week-tag tag-both" style="position:static;">Her</span>
+        <span>Her hepde</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

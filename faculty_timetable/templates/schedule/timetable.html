@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% block title %}Sapaklyk{% endblock %}
+{% block page_title %}Sapaklaryň tertibi — Hemme Toparlar{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'lesson_create' %}" class="btn btn-primary btn-sm no-print">➕ Sapak Goş</a>
+<button id="btn-print" class="btn btn-secondary btn-sm no-print">🖨️ Çap et</button>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filter Bar -->
+<form method="get" class="filter-bar no-print">
+  <!-- Week type -->
+  <div class="filter-group">
+    <span class="filter-label">Hepde:</span>
+    <div class="week-toggle">
+      <a href="?week_type=ODD{% if selected_department %}&department={{ selected_department }}{% endif %}{% if selected_course %}&course={{ selected_course }}{% endif %}"
+         class="week-btn {% if week_type == 'ODD' %}active-odd{% endif %}">
+        🔴 Täk hepde
+      </a>
+      <a href="?week_type=EVEN{% if selected_department %}&department={{ selected_department }}{% endif %}{% if selected_course %}&course={{ selected_course }}{% endif %}"
+         class="week-btn {% if week_type == 'EVEN' %}active-even{% endif %}">
+        🔵 Jübüt hepde
+      </a>
+    </div>
+  </div>
+
+  <!-- Department filter -->
+  <div class="filter-group">
+    <label class="filter-label">Kafedra:</label>
+    <select name="department" class="filter-select">
+      <option value="">— Hemmesi —</option>
+      {% for dept in departments %}
+      <option value="{{ dept.id }}" {% if selected_department == dept.id|stringformat:"s" %}selected{% endif %}>
+        {{ dept.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Course filter -->
+  <div class="filter-group">
+    <label class="filter-label">Kurs:</label>
+    <select name="course" class="filter-select">
+      <option value="">— Hemmesi —</option>
+      {% for c in courses %}
+      <option value="{{ c }}" {% if selected_course == c|stringformat:"s" %}selected{% endif %}>{{ c }}-nji kurs</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <input type="hidden" name="week_type" value="{{ week_type }}" id="hidden-week-type">
+  <button type="submit" class="btn btn-primary btn-sm">Süzgüç</button>
+  <a href="{% url 'timetable' %}?week_type={{ week_type }}" class="btn btn-secondary btn-sm">Arassala</a>
+</form>
+
+<!-- Week indicator -->
+<div class="week-indicator {% if week_type == 'ODD' %}odd{% else %}even{% endif %} no-print">
+  {% if week_type == 'ODD' %}🔴 Täk hepde sapaklary görkezilýär{% else %}🔵 Jüft hepde sapaklary görkezilýär{% endif %}
+</div>
+
+<!-- Legend -->
+<div class="legend no-print">
+  <div class="legend-item"><div class="legend-dot lab"></div> Laboratoriýa</div>
+  <div class="legend-item"><div class="legend-dot lec"></div> Leksiýa</div>
+  <div class="legend-item"><div class="legend-dot sim"></div> Adaty sapak</div>
+</div>
+
+<!-- Timetable -->
+<div class="timetable-wrapper">
+  <table class="timetable-table">
+    <thead>
+      <tr>
+        <th>Wagt</th>
+        {% for group in groups %}
+        <th>
+          {{ group.name }}
+          <div>
+            <span class="group-badge {% if group.group_type == 'EN' %}group-type-en{% elif group.group_type == 'RU' %}group-type-ru{% else %}group-type-tm{% endif %}">
+              {{ group.get_group_type_display }}
+            </span>
+            <span class="group-badge">{{ group.course }}-kurs</span>
+          </div>
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for day_data in timetable_rows %}
+      <!-- Day header row -->
+      <tr data-day="{{ day_data.day_code }}">
+        <th class="day-row" colspan="{{ groups|length|add:1 }}" style="background:linear-gradient(90deg,#1e3a8a 0%,#1a56a0 100%);color:#fff;padding:8px 14px;font-size:13px;font-weight:700;letter-spacing:0.5px;text-align:left;">
+          📅 {{ day_data.day_name }}
+        </th>
+      </tr>
+
+      {% for row in day_data.rows %}
+      <tr>
+        <!-- Time cell -->
+        <td class="time-cell">
+          <span class="slot-num">{{ row.timeslot.number }}-nji jübüt</span>
+          <span class="slot-time">{{ row.timeslot.start_time|time:"H:i" }}–{{ row.timeslot.end_time|time:"H:i" }}</span>
+          <span class="slot-shift">{{ row.timeslot.shift }}-nji çalşyk</span>
+        </td>
+
+        {% for cell in row.cells %}
+        <td class="lesson-cell {% if not cell.lessons %}empty-cell{% endif %}">
+          {% for lesson in cell.lessons %}
+          <div class="lesson-card {{ lesson.type_css_class }}" title="{{ lesson.subject.name }} — {{ lesson.teacher }} — {{ lesson.classroom }}">
+
+            <!-- Week tag -->
+            {% if lesson.week_type == 'ODD' %}
+            <span class="week-tag tag-odd">Täk</span>
+            {% elif lesson.week_type == 'EVEN' %}
+            <span class="week-tag tag-even">Jüft</span>
+            {% else %}
+            <span class="week-tag tag-both">Her</span>
+            {% endif %}
+
+            <!-- Subject name -->
+            <div class="lesson-name">
+              {% if lesson.subject.short_name %}{{ lesson.subject.short_name }}{% else %}{{ lesson.subject.name }}{% endif %}
+            </div>
+
+            <!-- Meta info -->
+            <div class="lesson-meta">
+              <div class="lesson-meta-row">
+                <span class="icon">👤</span>
+                <span>{{ lesson.teacher }}</span>
+              </div>
+              <div class="lesson-meta-row">
+                <span class="icon">🚪</span>
+                <span>{{ lesson.classroom.name }}</span>
+              </div>
+              <div class="lesson-meta-row" style="flex-wrap:wrap;gap:3px;">
+                <span class="type-tag {% if lesson.lesson_type == 'LAB' %}lab{% elif lesson.lesson_type == 'LEC' %}lec{% else %}sim{% endif %}">
+                  {{ lesson.get_lesson_type_display }}
+                </span>
+                {% if lesson.subgroup != 'FULL' %}
+                <span class="subgroup-tag">{{ lesson.get_subgroup_display }}</span>
+                {% endif %}
+                {% if lesson.language == 'EN' %}
+                <span class="lang-tag lang-en">EN</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="lesson-actions no-print">
+              <a href="{% url 'lesson_edit' lesson.id %}" class="lesson-action-btn edit" title="Duzet">&#9999;&#65039;</a>
+              <a href="{% url 'lesson_delete' lesson.id %}?next=/sapaklyk/" class="lesson-action-btn del" title="Poz">&#128465;&#65039;</a>
+            </div>
+          </div>
+          {% endfor %}
+          {% if not cell.lessons %}
+          <a href="{% url 'lesson_create' %}?group={{ cell.group.id }}&day={{ day_data.day_code }}&slot={{ row.timeslot.id }}" class="quick-add-cell no-print" title="Sapak gos">➕</a>
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if not groups %}
+<div style="text-align:center;padding:60px;color:var(--text-muted);">
+  <div style="font-size:48px;margin-bottom:16px;">📭</div>
+  <h3>Topar tapylmady</h3>
+  <p>Süzgüç parametrlerini üýtgediň ýa-da maglumat ýükläň.</p>
+  <a href="/admin/" class="btn btn-primary" style="margin-top:16px;">Dolandyryjy panelä git</a>
+</div>
+{% endif %}
+
+{% endblock %}
